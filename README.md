@@ -1,2 +1,5 @@
+
 # lapis
-# lapis
+
+Git-aware benchmarking.
+
