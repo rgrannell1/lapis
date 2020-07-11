@@ -5,7 +5,8 @@ const constants = {
   packageJson: require('../../package.json'),
   defaults: {
     repo: process.cwd(),
-    database: path.join(process.cwd(), 'lapis.db')
+    database: path.join(process.cwd(), 'lapis.db'),
+    folder: path.join(process.cwd(), 'bench/index.js')
   },
   codes: {
     INVALID_REPO: 'LAPIS_001',

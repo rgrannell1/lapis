@@ -1,6 +1,8 @@
 
+const constants = require('../commons/constants')
 const { codes } = require('../commons/constants')
 
+const errors = require('@rgrannell/errors')
 const simpleGit = require('simple-git')
 const path = require('path')
 const tmp = require('tmp-promise')
@@ -39,7 +41,27 @@ const createDatabase = async dbPath => {
 }
 
 const runBenchmarks = async (fpath, args) => {
-  await createDatabase(args.database)
+  const db = await createDatabase(args.database)
+
+  const git = simpleGit(fpath)
+  const commitId = await git.revparse(['HEAD'])
+
+  // -- require the benchmarks from a single export
+  const benchmarkPath = path.join(fpath, args.folder)
+
+  let benchmarks
+  try {
+    benchmarks = require(benchmarkPath)
+  } catch (err) {
+    throw errors.missingBenchmarks(`failed to load benchmarks from "${benchmarkPath}"; cannot run benchmarks for commit ${commitId.slice(0, 8)}`, codes.DATABASE_ERROR)
+  }
+  
+  
+  // -- the record to inset into the database.
+  const doc = {
+    id: commitId,
+    timestamp: Date.now()
+  }
 }
 
 /**
@@ -81,6 +103,7 @@ const lapis = async rawArgs => {
 lapis.preprocess = rawArgs => {
   return {
     repo: rawArgs['--repo'],
+    folder: rawArgs['<folder>'] || constants.defaults.folder,
     database: rawArgs['--database'],
     target: rawArgs['<target>']
   }

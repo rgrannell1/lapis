@@ -10,10 +10,13 @@ const docs = `
 Name:
   lapis – git-aware benchmarking
 Usage:
-  lapis [--repo <url>] [--database <fpath>]
+  lapis [--repo <url>] [--database <fpath>] [<folder>]
 
 Description:
   .  
+
+Arguments:
+  <folder>             the relative-path to the exported benchmark [default: ${constants.defaults.folder}]
 
 Options:
   --repo <url>          a file-path or url of the repository to benchmark. If not set, defaults to the 
