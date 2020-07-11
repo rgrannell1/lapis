@@ -11,10 +11,7 @@ const fse = require('fs-extra')
 const sqlite3 = require('sqlite3')
 
 const validateRepo = require('./validate-repo')
-
-
-
-
+const bench = require('../../bench')
 
 /**
  * Create a database to store benchmark data
@@ -40,7 +37,12 @@ const createDatabase = async dbPath => {
   return db
 }
 
-const runBenchmarks = async (fpath, args) => {
+/**
+ * 
+ * @param {string} fpath 
+ * @param {Object} args 
+ */
+const loadBenchmarks = async (fpath, args) => {
   const db = await createDatabase(args.database)
 
   const git = simpleGit(fpath)
@@ -53,14 +55,14 @@ const runBenchmarks = async (fpath, args) => {
   try {
     benchmarks = require(benchmarkPath)
   } catch (err) {
+    console.log(err)
     throw errors.missingBenchmarks(`failed to load benchmarks from "${benchmarkPath}"; cannot run benchmarks for commit ${commitId.slice(0, 8)}`, codes.DATABASE_ERROR)
   }
   
-  
   // -- the record to inset into the database.
-  const doc = {
-    id: commitId,
-    timestamp: Date.now()
+  return {
+    commitId,
+    benchmarks
   }
 }
 
@@ -89,19 +91,49 @@ const createRepoClone = async args => {
   return fpath
 }
 
+const runBenchmark = async ({ name, benchmarkName, benchmark }) => {
+
+}
+
+const runBenchmarks = async (commitId, benchmarks) => {
+  for (const [name, fileBenchmarks] of Object.entries(benchmarks)) {
+    for (const [benchName, benchmark] of Object.entries(fileBenchmarks)) {
+      runBenchmark({
+        name,
+        benchmarkName: benchName,
+        benchmark
+      })
+    }
+  }
+}
+
 const lapis = async rawArgs => {
   const args = lapis.preprocess(rawArgs)
-  const fpath = await createRepoClone(args)
 
-  await runBenchmarks(fpath, args)
+  if (args.local) {
+    const localPath = path.resolve('.')
+    const { commitId, benchmarks } = await loadBenchmarks(localPath, {
+      database: args.database,
+      folder: 'bench'
+    })
 
-  await fs.rmdir(fpath, {
-    recursive: true
-  })
+    runBenchmarks(commitId, benchmarks)
+    
+  } else {
+    const fpath = await createRepoClone(args)    
+    const { commitId, benchmarks } = await loadBenchmarks(fpath, args)
+  
+    await runBenchmarks(commitId, benchmarks)
+  
+    await fs.rmdir(fpath, {
+      recursive: true
+    })
+  }
 }
 
 lapis.preprocess = rawArgs => {
   return {
+    local: rawArgs['--local'],
     repo: rawArgs['--repo'],
     folder: rawArgs['<folder>'] || constants.defaults.folder,
     database: rawArgs['--database'],

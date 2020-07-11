@@ -11,6 +11,7 @@ Name:
   lapis – git-aware benchmarking
 Usage:
   lapis [--repo <url>] [--database <fpath>] [<folder>]
+  lapis --local [--repo <url>] [--database <fpath>] [<folder>]
 
 Description:
   .  
