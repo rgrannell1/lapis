@@ -10,6 +10,7 @@ const fs = require('fs').promises
 const fse = require('fs-extra')
 const sqlite3 = require('sqlite3')
 
+const runBenchmark = require('./run-benchmark')
 const validateRepo = require('./validate-repo')
 const bench = require('../../bench')
 
@@ -89,19 +90,6 @@ const createRepoClone = async args => {
   await git.reset('hard')
 
   return fpath
-}
-
-/**
- * Run benchmark set and collect data.
- * 
- * @param {String} opts.name            the benchmark-set's name 
- * @param {Function} opts.benchmark     the benchmark- 
- * @param {String} opts.benchmarkName   the benchmark name 
- */
-const runBenchmark = async ({ name, benchmarkName, benchmark }) => {
-
-
-
 }
 
 const runBenchmarks = async (commitId, benchmarks) => {
