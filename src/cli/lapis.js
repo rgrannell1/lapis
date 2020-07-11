@@ -10,13 +10,15 @@ const docs = `
 Name:
   lapis – git-aware benchmarking
 Usage:
-  lapis [--repo <url>]
+  lapis [--repo <url>] [--database <fpath>]
 
 Description:
+  .  
 
 Options:
-  --repo <url>    a file-path or url of the repository to benchmark. If not set, defaults to the 
-                    current working directory. [default: ${process.cwd()}]
+  --repo <url>          a file-path or url of the repository to benchmark. If not set, defaults to the 
+                          current working directory. [default: ${constants.defaults.repo}]
+  --database <fpath>    a file-path pointing to the benchmark data. [default: ${constants.defaults.database}]
 
 Authors:
   ${constants.packageJson.author}
