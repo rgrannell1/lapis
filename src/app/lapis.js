@@ -13,30 +13,7 @@ const sqlite3 = require('sqlite3')
 const runBenchmark = require('./run-benchmark')
 const validateRepo = require('./validate-repo')
 const bench = require('../../bench')
-
-/**
- * Create a database to store benchmark data
- * 
- * @param {string} dbPath the database path
- * 
- * @returns {Database}
- */
-const createDatabase = async dbPath => {
-  const dbStat = await fs.lstat(dbPath)
-
-  if (!dbStat.isFile()) {
-    throw errors.databaseError(`"${dbPath}" was not a file`, codes.DATABASE_ERROR)
-  }
-
-  let db
-  try {
-    const db = new sqlite3.Database(dbPath)
-  } catch (err) {
-    throw errors.databaseError(`"${dbPath}" was not a directory`, codes.DATABASE_ERROR)
-  }
-
-  return db
-}
+const sql = require('./sql')
 
 /**
  * 
@@ -44,7 +21,7 @@ const createDatabase = async dbPath => {
  * @param {Object} args 
  */
 const loadBenchmarks = async (fpath, args) => {
-  const db = await createDatabase(args.database)
+  const db = await sql.create(args.database)
 
   const git = simpleGit(fpath)
   const commitId = await git.revparse(['HEAD'])
@@ -62,6 +39,7 @@ const loadBenchmarks = async (fpath, args) => {
   
   // -- the record to inset into the database.
   return {
+    db,
     commitId,
     benchmarks
   }
@@ -92,14 +70,18 @@ const createRepoClone = async args => {
   return fpath
 }
 
-const runBenchmarks = async (commitId, benchmarks) => {
+const runBenchmarks = async (db, commitId, benchmarks) => {
   for (const [name, fileBenchmarks] of Object.entries(benchmarks)) {
     for (const [benchName, benchmark] of Object.entries(fileBenchmarks)) {
-      runBenchmark({
+      const iter = runBenchmark({
         name,
         benchmarkName: benchName,
         benchmark
       })
+
+      for await (let measurement of iter) {
+        console.log(measurement)
+      }
     }
   }
 }
@@ -109,18 +91,18 @@ const lapis = async rawArgs => {
 
   if (args.local) {
     const localPath = path.resolve('.')
-    const { commitId, benchmarks } = await loadBenchmarks(localPath, {
+    const { db, commitId, benchmarks } = await loadBenchmarks(localPath, {
       database: args.database,
       folder: 'bench'
     })
 
-    runBenchmarks(commitId, benchmarks)
+    runBenchmarks(db, commitId, benchmarks)
     
   } else {
     const fpath = await createRepoClone(args)    
     const { commitId, benchmarks } = await loadBenchmarks(fpath, args)
   
-    await runBenchmarks(commitId, benchmarks)
+    await runBenchmarks(db, commitId, benchmarks)
   
     await fs.rmdir(fpath, {
       recursive: true

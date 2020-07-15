@@ -12,7 +12,9 @@
         "<node_internals>/**"
       ],
       "program": "${workspaceFolder}/src/cli/lapis.js",
-      "args": []
+      "args": [
+        "--local"
+      ]
     }
   ]
 }
