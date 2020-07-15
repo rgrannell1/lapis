@@ -55,7 +55,7 @@ const invokeMetrics = (metrics, testCase) => {
  * @param {String} opts.benchmarkName   the benchmark name 
  */
 
-async function* runBenchmark ({ name, benchmarkName, benchmark }) {
+async function* runBenchmark ({ name, benchmarkName, benchmark, until }) {
   const {
     metadata,
     measures,
@@ -63,6 +63,7 @@ async function* runBenchmark ({ name, benchmarkName, benchmark }) {
     metrics
   } = benchmark
 
+  const startTime = Date.now()
   const getTestCase = adaptCaseGenerator(cases)
   
   while (true) {
@@ -82,6 +83,10 @@ async function* runBenchmark ({ name, benchmarkName, benchmark }) {
     }
   
     state.count++
+
+    if (until(state.count, startTime)) {
+      return
+    }
 
     if (tcase.done) {
       return

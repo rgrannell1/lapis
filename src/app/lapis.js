@@ -8,11 +8,9 @@ const path = require('path')
 const tmp = require('tmp-promise')
 const fs = require('fs').promises
 const fse = require('fs-extra')
-const sqlite3 = require('sqlite3')
 
 const runBenchmark = require('./run-benchmark')
 const validateRepo = require('./validate-repo')
-const bench = require('../../bench')
 const sql = require('./sql')
 
 /**
@@ -70,13 +68,19 @@ const createRepoClone = async args => {
   return fpath
 }
 
+// -- todo
+const until = (count, time) => {
+  return Date.now() - time > 5_000
+}
+
 const runBenchmarks = async (db, commitId, benchmarks) => {
   for (const [name, fileBenchmarks] of Object.entries(benchmarks)) {
     for (const [benchName, benchmark] of Object.entries(fileBenchmarks)) {
       const iter = runBenchmark({
         name,
         benchmarkName: benchName,
-        benchmark
+        benchmark,
+        until
       })
 
       for await (let measurement of iter) {

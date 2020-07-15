@@ -11,8 +11,8 @@
     "type": "git",
     "url": "git+https://github.com/rgrannell1/lapis.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Róisín Grannell",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/rgrannell1/lapis/issues"
   },
@@ -22,17 +22,16 @@
     "@rgrannell/errors": "^9.4.0",
     "@rgrannell/lint": "^9.4.0",
     "@rgrannell/pulp": "^9.4.0",
-    "fs-extra": "^9.0.1",
-    "is-generator-function": "^1.0.7",
-    "leveldown": "^5.6.0",
-    "levelup": "^4.4.0",
-    "neodoc": "^2.0.2",
-    "simple-git": "^2.12.0",
-    "sqlite3": "^5.0.0",
-    "tmp-promise": "^3.0.2"
+    "fs-extra": "9.0.1",
+    "is-generator-function": "1.0.7",
+    "leveldown": "5.6.0",
+    "levelup": "4.4.0",
+    "neodoc": "2.0.2",
+    "simple-git": "2.12.0",
+    "tmp-promise": "3.0.2"
   },
   "devDependencies": {
-    "husky": "^4.2.5"
+    "husky": "4.2.5"
   },
   "husky": {
     "hooks": {
