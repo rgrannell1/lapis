@@ -8,22 +8,22 @@ const path = require('path')
 const tmp = require('tmp-promise')
 const fs = require('fs').promises
 const fse = require('fs-extra')
+const up = require('util').promisify
 
 const runBenchmark = require('./run-benchmark')
-const validateRepo = require('./validate-repo')
 const sql = require('./sql')
 
 /**
+ * Load lapis benchmarks from a provided export folder.
  * 
- * @param {string} fpath 
+ * @param {Object} opts.fpath 
+ * @param {Object} opts.commitID 
+ * @param {Object} opts.db 
  * @param {Object} args 
+ * 
+ * @returns {Object} benchmark information
  */
-const loadBenchmarks = async (fpath, args) => {
-  const db = await sql.create(args.database)
-
-  const git = simpleGit(fpath)
-  const commitId = await git.revparse(['HEAD'])
-
+const loadBenchmarks = async ({fpath, commitID, db}, args) => {
   // -- require the benchmarks from a single export
   const benchmarkPath = path.join(fpath, args.folder)
 
@@ -35,83 +35,141 @@ const loadBenchmarks = async (fpath, args) => {
     throw errors.missingBenchmarks(`failed to load benchmarks from "${benchmarkPath}"; cannot run benchmarks for commit ${commitId.slice(0, 8)}`, codes.DATABASE_ERROR)
   }
   
-  // -- the record to inset into the database.
   return {
-    db,
-    commitId,
     benchmarks
   }
 }
 
 /**
+ * Run each benchmarks
+ * 
+ * @param {db} opts.db 
+ * @param {string} opts.commitId 
+ * @param {Function} opts.until 
+ * @param {Object} opts.benchmarks 
  * 
  * 
- * @param {Object} args CLI arguments
- * 
- * @return {string} the clone repository path
  */
-const createRepoClone = async args => {
-  // -- copy .git to a temporary directory.
-  const repoStatus = await validateRepo(args)
-  const { path: fpath, cleanup } = await tmp.dir()
-
-  const gitPath = path.join(repoStatus.fpath, '.git')
-  const targetGitPath = path.join(fpath, '.git')
-  
-  await fs.mkdir(targetGitPath)
-  await fse.copy(gitPath, targetGitPath)
-
-  // -- load HEAD from the commit.
-  const git = simpleGit(fpath)
-  await git.reset('hard')
-
-  return fpath
-}
-
-// -- todo
-const until = (count, time) => {
-  return Date.now() - time > 5_000
-}
-
-const runBenchmarks = async (db, commitId, benchmarks) => {
+const runBenchmarks = async ({db, local, commitId, until, benchmarks}) => {
   for (const [name, fileBenchmarks] of Object.entries(benchmarks)) {
-    for (const [benchName, benchmark] of Object.entries(fileBenchmarks)) {
+    for (const [benchmarkName, benchmark] of Object.entries(fileBenchmarks)) {
+      // metadata: name, benchmarkname, commitId, time, isLocal
+      const metadata = {
+        name,
+        benchmarkName,
+        commitId,
+        local
+      }
+
       const iter = runBenchmark({
         name,
-        benchmarkName: benchName,
+        benchmarkName,
         benchmark,
         until
       })
 
+      let buffer = []
+
       for await (let measurement of iter) {
-        console.log(measurement)
+        buffer.push(measurement)
+
+        if (buffer.length > 100) {
+          await sql.writeMeasurements(db, {
+            name,
+            commitId,
+            benchmarkName,
+            measurements: buffer
+          })
+          
+          buffer = []
+        }
       }
+
+      // -- finish db writes
     }
   }
 }
 
+/**
+ * Determine how long each benchmark should be run for
+ * 
+ * @param {Object} args command-line arguments 
+ * @param {Object} benchmarks benchmark data
+ * 
+ * @return {Boolean} 
+ */
+const findBenchmarkRuntime = (args, benchmarks) => {
+  return (count, time) => {
+    return Date.now() - time > 5_000
+  }
+}
+
+/**
+ * The core program
+ * 
+ * @param {Object} rawArgs the raw arguments provided to lapis
+ * 
+ * @returns {Promise} returns a promise 
+ */
 const lapis = async rawArgs => {
   const args = lapis.preprocess(rawArgs)
+  const db = await sql.create(args.database)
 
-  if (args.local) {
-    const localPath = path.resolve('.')
-    const { db, commitId, benchmarks } = await loadBenchmarks(localPath, {
-      database: args.database,
-      folder: 'bench'
-    })
+  return args.local
+    ? lapis.local(args, db)
+    : lapis.clone(args, db)
+}
 
-    runBenchmarks(db, commitId, benchmarks)
-    
-  } else {
-    const fpath = await createRepoClone(args)    
-    const { commitId, benchmarks } = await loadBenchmarks(fpath, args)
-  
-    await runBenchmarks(db, commitId, benchmarks)
-  
-    await fs.rmdir(fpath, {
-      recursive: true
-    })
-  }
+/**
+ * Run lapis locally rather than in a cloned repository.
+ *  
+ * @param {Object} args CLI arguments
+ * @param {Object} db   a database reference 
+ * 
+ * @returns {Promise<>} a result promise 
+ */
+lapis.local = async (args, db) => {
+  const localPath = path.resolve('.')
+
+  const git = simpleGit(localPath)
+  const commitId = await git.revparse(['HEAD'])
+
+  const { benchmarks } = await loadBenchmarks({fpath: localPath, db, commitId}, {
+    database: args.database,
+    folder: 'bench'
+  })
+
+  return runBenchmarks({
+    db, 
+    commitId, 
+    until: findBenchmarkRuntime(args, benchmarks), 
+    benchmarks,
+    local: true
+  })    
+}
+
+/**
+ * Run lapis in a closed repository.
+ *  
+ * @param {Object} args CLI arguments
+ * @param {Object} db   a database reference 
+ * 
+ * @returns {Promise<>} a result promise 
+ */
+lapis.clone = async (args, db) => {
+  const fpath = await createRepoClone(args)    
+  const { commitId, benchmarks } = await loadBenchmarks({fpath, db, commitId}, args)
+
+  await runBenchmarks({
+    db, 
+    commitId, 
+    benchmarks,
+    local: false
+  })
+
+  await fs.rmdir(fpath, {
+    recursive: true
+  })
 }
 
 lapis.preprocess = rawArgs => {

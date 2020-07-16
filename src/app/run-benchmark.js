@@ -1,12 +1,20 @@
 
-const benchmarks = require('../../bench')
 const isGenerator = require('is-generator-function')
 const constants = require('../commons/constants')
-const EventEmitter = require('events');
+const EventEmitter = require('events')
+const createRepoClone = require('../app/create-repo-clone')
 
 
 
 
+
+/**
+ * Provide a common interface for functions and generators; retrieve test-cases
+ * 
+ * @param {Function | GeneratorFunction} cases a test-case function 
+ * 
+ * @returns {Function} a function that returns test-cases
+ */
 const adaptCaseGenerator = cases => {
   if (isGenerator(cases)) {
     let iter = cases()
@@ -28,10 +36,16 @@ const state = {
   measurements: []
 }
 
+/**
+ * Call each metric to measure the test-case.
+ * 
+ * @param {Object} metrics 
+ * @param {Object} testCase 
+ * 
+ * @returns {Object} an object containing metric measurements
+ */
 const invokeMetrics = (metrics, testCase) => {
-  const measures = {
-
-  }
+  const measures = { }
 
   for (const [name, metricsDef] of Object.entries(metrics)) {
     const value = testCase.value[name]
@@ -40,7 +54,10 @@ const invokeMetrics = (metrics, testCase) => {
 
     for (const metric of metricsDef) {
       const measure = metric.definition(value)
-      measures[name].push(measure)
+      measures[name].push({
+        measure,
+        definition: metric.description
+      })
     }    
   }
 
@@ -53,6 +70,8 @@ const invokeMetrics = (metrics, testCase) => {
  * @param {String} opts.name            the benchmark-set's name 
  * @param {Function} opts.benchmark     the benchmark- 
  * @param {String} opts.benchmarkName   the benchmark name 
+ * 
+ * @yields {Object} testcase benchmark data
  */
 
 async function* runBenchmark ({ name, benchmarkName, benchmark, until }) {

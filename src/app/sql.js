@@ -1,9 +1,7 @@
 
-const sql = { }
+const sqlite3 = require('sqlite3').verbose()
 
-const levelup = require('levelup')
-const leveldown = require('leveldown')
-const fs = require('fs').promises
+const sql = { }
 
 /**
  * Create a database to store benchmark data
@@ -13,17 +11,22 @@ const fs = require('fs').promises
  * @returns {Database}
  */
 sql.create = async dbPath => {
-  const db = levelup(leveldown(dbPath))
+  const db = new sqlite3.Database(dbPath)
+
+  db.run(`CREATE TABLE IF NOT EXISTS measurements (
+    raw_text TEXT
+  )`)
 
   return db
 }
 
-sql.createTables = async db => {
-
-}
-
-sql.writeMeasurements = (db, { name, commitId, benchmarkName, measurements }) => {
-  console.log('sql.writeMeasurements -> measurements', measurements)
+sql.writeMeasurements = async (db, { name, commitId, benchmarkName, measurements }) => {
+  for (let measurement of measurements) {
+    if (!measurement) {
+      continue
+    }
+    db.run('INSERT INTO measurements VALUES (?)', measurement)
+  }
 }
 
 module.exports = sql

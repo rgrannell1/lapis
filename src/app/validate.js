@@ -6,7 +6,16 @@ const simpleGit = require('simple-git')
 const url = require('url')
 const fs = require('fs').promises
 
-const validateRepo = async args => {
+const validate = { }
+
+/**
+ * Validate the target git repository
+ * 
+ * @param {Object} args CLI arguments
+ * 
+ * @returns {Object} the repository data 
+ */
+validate.repo = async args => {
   let repo
   const parsed = url.parse(args.repo)
 
@@ -48,4 +57,4 @@ const validateRepo = async args => {
   return repo
 }
 
-module.exports = validateRepo
+module.exports = validate
