@@ -13,7 +13,7 @@ class LapisBenchmark {
     return this
   }
   measure (fn) {
-    this.measures = this.measures.push(fn)
+    this.measures.push(fn)
     return this
   }
 }

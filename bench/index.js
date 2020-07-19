@@ -20,8 +20,8 @@ benchmarks.testFile.addition = new LapisBenchmark({
     x: [ metrics.length ],
     y: [ metrics.length ]
   })
-  .measure(({x, y}) => {
-    let _ = 1 + 1
+  .measure(( {x, y} ) => {
+
   })
 
 module.exports = benchmarks

@@ -22,12 +22,9 @@
     "@rgrannell/errors": "^9.4.0",
     "@rgrannell/lint": "^9.4.0",
     "@rgrannell/pulp": "^9.4.0",
-    "fs-extra": "9.0.1",
     "is-generator-function": "1.0.7",
     "neodoc": "2.0.2",
-    "simple-git": "2.12.0",
-    "sqlite3": "^5.0.0",
-    "tmp-promise": "3.0.2"
+    "simple-git": "2.12.0"
   },
   "devDependencies": {
     "husky": "4.2.5"

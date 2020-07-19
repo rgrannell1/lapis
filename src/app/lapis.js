@@ -5,13 +5,10 @@ const { codes } = require('../commons/constants')
 const errors = require('@rgrannell/errors')
 const simpleGit = require('simple-git')
 const path = require('path')
-const tmp = require('tmp-promise')
 const fs = require('fs').promises
-const fse = require('fs-extra')
-const up = require('util').promisify
 
 const runBenchmark = require('./run-benchmark')
-const sql = require('./sql')
+const storage = require('./storage')
 
 /**
  * Load lapis benchmarks from a provided export folder.
@@ -31,7 +28,6 @@ const loadBenchmarks = async ({fpath, commitID, db}, args) => {
   try {
     benchmarks = require(benchmarkPath)
   } catch (err) {
-    console.log(err)
     throw errors.missingBenchmarks(`failed to load benchmarks from "${benchmarkPath}"; cannot run benchmarks for commit ${commitId.slice(0, 8)}`, codes.DATABASE_ERROR)
   }
   
@@ -53,14 +49,13 @@ const loadBenchmarks = async ({fpath, commitID, db}, args) => {
 const runBenchmarks = async ({db, local, commitId, until, benchmarks}) => {
   for (const [name, fileBenchmarks] of Object.entries(benchmarks)) {
     for (const [benchmarkName, benchmark] of Object.entries(fileBenchmarks)) {
-      // metadata: name, benchmarkname, commitId, time, isLocal
       const metadata = {
         name,
-        benchmarkName,
+        local,
         commitId,
-        local
-      }
-
+        benchmarkName
+      }      
+      
       const iter = runBenchmark({
         name,
         benchmarkName,
@@ -69,15 +64,14 @@ const runBenchmarks = async ({db, local, commitId, until, benchmarks}) => {
       })
 
       let buffer = []
+      await storage.writeMetadata(metadata)
 
       for await (let measurement of iter) {
         buffer.push(measurement)
 
-        if (buffer.length > 100) {
-          await sql.writeMeasurements(db, {
-            name,
-            commitId,
-            benchmarkName,
+        if (buffer.length > 1_000) {
+          await storage.writeMeasurements(db, {
+            ...metadata,
             measurements: buffer
           })
           
@@ -85,7 +79,10 @@ const runBenchmarks = async ({db, local, commitId, until, benchmarks}) => {
         }
       }
 
-      // -- finish db writes
+      await storage.writeMeasurements(db, {
+        ...metadata,
+        measurements: buffer
+      })
     }
   }
 }
@@ -113,7 +110,7 @@ const findBenchmarkRuntime = (args, benchmarks) => {
  */
 const lapis = async rawArgs => {
   const args = lapis.preprocess(rawArgs)
-  const db = await sql.create(args.database)
+  const db = await storage.create(args.database)
 
   return args.local
     ? lapis.local(args, db)

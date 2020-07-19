@@ -1,10 +1,10 @@
 
 const isGenerator = require('is-generator-function')
+
 const constants = require('../commons/constants')
-const EventEmitter = require('events')
 const createRepoClone = require('../app/create-repo-clone')
-
-
+const string = require('../commons/string')
+const time = require('../commons/time')
 
 
 
@@ -45,23 +45,26 @@ const state = {
  * @returns {Object} an object containing metric measurements
  */
 const invokeMetrics = (metrics, testCase) => {
-  const measures = { }
+  const metricVals = { }
 
-  for (const [name, metricsDef] of Object.entries(metrics)) {
+  // -- order negates the need for ids in output
+  const orderedMetrics = Object.entries(metrics).sort((elem0, elem1) => {
+    return string.compare(elem0[0], elem1[0])
+  })
+
+  for (const [name, metricsDef] of orderedMetrics) {
     const value = testCase.value[name]
 
-    measures[name] = []
+    metricVals[name] = [ ]
 
+    // -- measure the test case and push the results.
     for (const metric of metricsDef) {
       const measure = metric.definition(value)
-      measures[name].push({
-        measure,
-        definition: metric.description
-      })
+      metricVals[name].push({ measure })
     }    
   }
 
-  return measures
+  return metricVals
 }
 
 /**
@@ -86,31 +89,34 @@ async function* runBenchmark ({ name, benchmarkName, benchmark, until }) {
   const getTestCase = adaptCaseGenerator(cases)
   
   while (true) {
-    const tcase = getTestCase()
-    const testCaseMeasures = invokeMetrics(metrics, tcase)
-  
-    const start = process.hrtime()
-  
-    const end = process.hrtime()
-    const diff = process.hrtime(start)
-  
-    const testCaseData = {
-      count: state.count,
-      testCase: tcase.value,
-      duration: diff[0] * 1e9 + diff[1],
-      measures: testCaseMeasures
-    }
-  
-    state.count++
+    for (const measure of measures) {
+      const tcase = getTestCase()
+      const testCaseMeasures = invokeMetrics(metrics, tcase)
+    
+      const start = process.hrtime()
+              
+      await measure(tcase)
 
-    if (until(state.count, startTime)) {
-      return
-    }
-
-    if (tcase.done) {
-      return
-    } else {
-      yield testCaseData
+      const diff = process.hrtime(start)
+    
+      const testCaseData = {
+        count: state.count,
+        testCase: tcase.value,
+        duration: time.hrDiffToSeconds(diff),
+        measures: testCaseMeasures
+      }
+    
+      state.count++
+  
+      if (until(state.count, startTime)) {
+        return
+      }
+  
+      if (tcase.done) {
+        return
+      } else {
+        yield testCaseData
+      }
     }
   }
 }
