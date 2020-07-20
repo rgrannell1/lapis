@@ -30,7 +30,10 @@ stats.final = acc => {
       p99: value.percentilesAgg.quantile(0.99)
     }
 
-    output[id] = percentiles
+    output[id] = {
+      ...percentiles,
+      timestamp: Date.now()
+    }
   }  
 
   return output

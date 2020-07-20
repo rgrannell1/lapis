@@ -1,8 +1,6 @@
 
-const fs = require('fs').promises
-const path = require('path')
-
-const errors = require('@rgrannell/errors')
+require('sqlite3')
+const { connect } = require('trilogy')
 
 const storage = { }
 
@@ -14,43 +12,41 @@ const storage = { }
  * @returns {Database}
  */
 storage.create = async dbPath => {
-  let stat
-  try {
-    stat = await fs.lstat(dbPath)
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      await fs.mkdir(dbPath)
-    } else {
-      throw new Error('aaaa')
-    }
-  }
+  const db = connect(dbPath)
 
-  if (stat && !stat.isDirectory()) {
-    throw new Error(`${dbPath} was not a folder`)
-  }
-
-  return dbPath
+  return db.model('summary', {
+    name: String,
+    local: Boolean,
+    commitId: String,
+    benchmarkName: String,
+    p1: Number,
+    p5: Number,
+    p25: Number,
+    p50: Number,
+    p75: Number,
+    p95: Number,
+    p99: Number,
+    timestamp: String
+  })
 }
 
-storage.writeMeasurements = async (db, data) => {
-  return
-  const measurements = data.measurements
-  delete data.measurements
+storage.add = { }
 
-  const content = measurements
-  .map(data => JSON.stringify(data))
-  .join('\n')
-
-  if (!data.commitId) {
-    throw new Error('xxx')
-  }
-
-  const fpath = path.join(db, `${data.commitId}.jsonl`)
-  await fs.appendFile(fpath, content)
-}
-
-storage.writeMetadata = async (db, data) => {
-
+storage.add.summary = async (db, data) => {
+  await db.create({
+    name: data.name,
+    local: data.local,
+    commitId: data.commitId,
+    benchmarkName: data.benchmarkName,
+    p1: data.p1,
+    p5: data.p5,
+    p25: data.p25,
+    p50: data.p50,
+    p75: data.p75,
+    p95: data.p95,
+    p99: data.p99,
+    timestamp: data.timestamp
+  })
 }
 
 module.exports = storage

@@ -66,19 +66,18 @@ const runBenchmarks = async ({db, local, commitId, until, benchmarks}) => {
         until
       })
 
-      let buffer = []
-      await storage.writeMetadata(metadata)
-
-      const statState = { 
-
-      }
+      const statState = { }
 
       for await (let measurement of iter) {
         stats.update(statState, measurement)
       }
 
-      const summary = stats.final(statState)
-      console.log(summary)
+      return Object.entries(stats.final(statState)).map(( [id, value] ) => {
+        return {
+          ...metadata,
+          ...value
+        }
+      })
     }
   }
 }
@@ -132,13 +131,19 @@ lapis.local = async (args, db) => {
     folder: 'bench'
   })
 
-  return runBenchmarks({
+  const summaries = await runBenchmarks({
     db, 
     commitId, 
     until: findBenchmarkRuntime(args, benchmarks), 
     benchmarks,
     local: true
   })    
+
+  for (const summary of summaries) {
+    await storage.add.summary(db, summary)
+  }
+
+  process.exit(0)
 }
 
 /**
