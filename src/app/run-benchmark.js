@@ -89,7 +89,8 @@ async function* runBenchmark ({ name, benchmarkName, benchmark, until }) {
   const getTestCase = adaptCaseGenerator(cases)
   
   while (true) {
-    for (const measure of measures) {
+    for (let ith = 0; ith < measures.length; ++ith) {
+      const measure = measures[ith]
       const tcase = getTestCase()
       const testCaseMeasures = invokeMetrics(metrics, tcase)
     
@@ -100,6 +101,7 @@ async function* runBenchmark ({ name, benchmarkName, benchmark, until }) {
       const diff = process.hrtime(start)
     
       const testCaseData = {
+        measureId: `measure-${ith}`,
         count: state.count,
         testCase: tcase.value,
         duration: time.hrDiffToSeconds(diff),

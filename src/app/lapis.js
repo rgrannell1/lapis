@@ -10,6 +10,9 @@ const fs = require('fs').promises
 const runBenchmark = require('./run-benchmark')
 const storage = require('./storage')
 
+const stats = require('./stats')
+
+
 /**
  * Load lapis benchmarks from a provided export folder.
  * 
@@ -66,23 +69,16 @@ const runBenchmarks = async ({db, local, commitId, until, benchmarks}) => {
       let buffer = []
       await storage.writeMetadata(metadata)
 
-      for await (let measurement of iter) {
-        buffer.push(measurement)
+      const statState = { 
 
-        if (buffer.length > 1_000) {
-          await storage.writeMeasurements(db, {
-            ...metadata,
-            measurements: buffer
-          })
-          
-          buffer = []
-        }
       }
 
-      await storage.writeMeasurements(db, {
-        ...metadata,
-        measurements: buffer
-      })
+      for await (let measurement of iter) {
+        stats.update(statState, measurement)
+      }
+
+      const summary = stats.final(statState)
+      console.log(summary)
     }
   }
 }
